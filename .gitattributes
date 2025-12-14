@@ -1,0 +1,5 @@
+# Override language detection
+*.bicep linguist-language=Bicep
+*.sh linguist-language=Shell
+*.ps1 linguist-vendored=true
+*.json linguist-vendored=true
