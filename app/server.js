@@ -343,7 +343,7 @@ app.get('/', (req, res) => {
         </div>
 
         <div class="footer">
-          <p><strong>Customer Demo Project</strong></p>
+          <p><strong>Customer Demo Project - Version 1.0</strong></p>
           <p>Azure Container Apps with BYO VNET • Managed Identity • Private ACR</p>
           <p style="margin-top: 10px; font-size: 0.85em;">West US 3 Region • Resource Group: rg-containerapp-demo</p>
         </div>
