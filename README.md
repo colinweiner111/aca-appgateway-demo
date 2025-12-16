@@ -43,7 +43,7 @@ This single script deploys everything: resource group, infrastructure, builds th
 **Custom deployment:**
 
 ```powershell
-.\scripts\deploy-all.ps1 -ResourceGroup "my-rg-name" -Location "eastus"
+.\scripts\deploy-all.ps1 -ResourceGroup "rg-aca-demo" -Location "westus3"
 ```
 
 ### Manual Step-by-Step (Optional)
