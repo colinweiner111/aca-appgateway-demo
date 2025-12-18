@@ -32,7 +32,14 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
         name: 'snet-container-apps'
         properties: {
           addressPrefix: containerAppsSubnetPrefix
-          delegations: []
+          delegations: [
+            {
+              name: 'delegateToContainerApps'
+              properties: {
+                serviceName: 'Microsoft.App/environments'
+              }
+            }
+          ]
           privateEndpointNetworkPolicies: 'Disabled'
           privateLinkServiceNetworkPolicies: 'Enabled'
         }
