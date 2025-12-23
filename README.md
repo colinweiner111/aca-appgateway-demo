@@ -28,6 +28,11 @@ Azure Container Registry (10.0.2.0/24)
 - Azure subscription with appropriate permissions
 - PowerShell 7+ or Bash
 
+> **⚠️ IMPORTANT: ACR Private Endpoint DNS Configuration**  
+> This deployment creates **TWO private DNS zones** for ACR (control plane + data plane).  
+> Both are required for Container Apps to pull images when ACR public access is disabled.  
+> See [ACR-PRIVATE-ENDPOINT-DNS.md](docs/ACR-PRIVATE-ENDPOINT-DNS.md) for details.
+
 ## 🚀 Quick Start
 
 **One-Command Deployment:**
@@ -169,6 +174,27 @@ aca-demo-app/
 - **SKU**: Premium (required for private endpoints)
 - **Access**: Private endpoint + public for builds
 - **Authentication**: Managed identity (AcrPull role)
+- **DNS Zones**: Dual-zone configuration for complete private connectivity
+  - `privatelink.azurecr.io` - Control plane (login, manifests)
+  - `privatelink.{region}.data.azurecr.io` - Data plane (image layers)
+
+#### Why Two DNS Zones?
+
+Azure Container Registry uses **two separate endpoints** when pulling images:
+
+1. **Control Plane** (`<registry>.azurecr.io`)
+   - Handles authentication, manifest lookups, and metadata
+   - Resolves via `privatelink.azurecr.io` DNS zone
+
+2. **Data Plane** (`<registry>.<region>.data.azurecr.io`)
+   - Serves actual image layers and blobs
+   - Resolves via `privatelink.<region>.data.azurecr.io` DNS zone
+
+**Without BOTH zones configured:**
+- ✅ Container Apps can authenticate to ACR (control plane works)
+- ❌ Image pulls hang indefinitely (data plane falls back to public, which is blocked)
+
+This is the most common cause of "image pull timeout" errors when using private ACR with Container Apps.
 
 ## 🧹 Cleanup
 
@@ -305,11 +331,52 @@ az acr update --name <acr-name> --public-network-enabled true --default-action A
 az role assignment list --assignee <managed-identity-id> --scope /subscriptions/<sub-id>/resourceGroups/rg-aca-demo
 ```
 
+### Image pull hangs or times out with private ACR
+**Symptom**: Container Apps shows "ImagePullBackOff" or deployment hangs indefinitely
+
+**Cause**: Missing or incomplete DNS zone configuration for ACR private endpoints
+
+**Solution**: Verify BOTH DNS zones exist and are linked to the VNET:
+
+```bash
+# Check control plane DNS zone
+az network private-dns zone show \
+  --resource-group rg-aca-demo \
+  --name privatelink.azurecr.io
+
+# Check data plane DNS zone (region-specific)
+az network private-dns zone show \
+  --resource-group rg-aca-demo \
+  --name privatelink.westus3.data.azurecr.io
+
+# Verify both zones are linked to VNET
+az network private-dns link vnet list \
+  --resource-group rg-aca-demo \
+  --zone-name privatelink.azurecr.io
+
+az network private-dns link vnet list \
+  --resource-group rg-aca-demo \
+  --zone-name privatelink.westus3.data.azurecr.io
+```
+
+**Verify DNS resolution from within VNET** (requires a test VM):
+```bash
+# Both should resolve to private IPs (10.0.2.x)
+nslookup <acrname>.azurecr.io
+nslookup <acrname>.westus3.data.azurecr.io
+```
+
+If the data endpoint resolves to a public IP or fails to resolve, the data plane DNS zone is missing or not properly configured.
+
 ## 📚 Learn More
 
+### Project Documentation
+- **[ACR Private Endpoint DNS Configuration](docs/ACR-PRIVATE-ENDPOINT-DNS.md)** - Deep dive into dual DNS zone requirements
+
+### Azure Documentation
 - [Azure Container Apps Documentation](https://learn.microsoft.com/azure/container-apps/)
 - [Application Gateway WAF](https://learn.microsoft.com/azure/web-application-firewall/ag/ag-overview)
-- [Azure Container Registry](https://learn.microsoft.com/azure/container-registry/)
+- [Azure Container Registry Private Link](https://learn.microsoft.com/azure/container-registry/container-registry-private-link)
 
 ## 📝 License
 

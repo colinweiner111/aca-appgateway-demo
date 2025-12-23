@@ -37,13 +37,20 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-05-01' = {
   }
 }
 
-// Private DNS Zone for ACR
+// Private DNS Zone for ACR - Control Plane
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: 'privatelink.azurecr.io'
   location: 'global'
 }
 
-// Link Private DNS Zone to VNET
+// Private DNS Zone for ACR - Data Plane (region-specific)
+// This zone is REQUIRED for Container Apps to pull images when ACR public access is disabled
+resource privateDnsZoneData 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: 'privatelink.${location}.data.azurecr.io'
+  location: 'global'
+}
+
+// Link Control Plane DNS Zone to VNET
 resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
   parent: privateDnsZone
   name: '${privateEndpointName}-dns-link'
@@ -56,7 +63,21 @@ resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLin
   }
 }
 
+// Link Data Plane DNS Zone to VNET
+resource privateDnsZoneDataLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: privateDnsZoneData
+  name: '${privateEndpointName}-data-dns-link'
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: vnetId
+    }
+  }
+}
+
 // DNS Zone Group for automatic DNS registration
+// This configures BOTH control plane and data plane endpoints
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-05-01' = {
   parent: privateEndpoint
   name: 'default'
@@ -68,9 +89,16 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
           privateDnsZoneId: privateDnsZone.id
         }
       }
+      {
+        name: 'privatelink-data-azurecr-io'
+        properties: {
+          privateDnsZoneId: privateDnsZoneData.id
+        }
+      }
     ]
   }
 }
 
 output privateEndpointId string = privateEndpoint.id
 output privateDnsZoneId string = privateDnsZone.id
+output privateDnsZoneDataId string = privateDnsZoneData.id

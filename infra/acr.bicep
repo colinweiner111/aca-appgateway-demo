@@ -46,7 +46,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
     encryption: {
       status: 'disabled'
     }
-    dataEndpointEnabled: false
+    dataEndpointEnabled: true
   }
 }
 
