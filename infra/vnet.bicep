@@ -18,6 +18,9 @@ param privateEndpointsSubnetPrefix string = '10.0.2.0/24'
 @description('Application Gateway subnet address prefix')
 param appGatewaySubnetPrefix string = '10.0.3.0/24'
 
+@description('Azure Firewall subnet address prefix')
+param azureFirewallSubnetPrefix string = '10.0.4.0/26'
+
 resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
   name: vnetName
   location: location
@@ -60,6 +63,14 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' = {
           privateLinkServiceNetworkPolicies: 'Enabled'
         }
       }
+      {
+        name: 'AzureFirewallSubnet'
+        properties: {
+          addressPrefix: azureFirewallSubnetPrefix
+          privateEndpointNetworkPolicies: 'Disabled'
+          privateLinkServiceNetworkPolicies: 'Enabled'
+        }
+      }
     ]
   }
 }
@@ -69,3 +80,4 @@ output vnetName string = vnet.name
 output containerAppsSubnetId string = vnet.properties.subnets[0].id
 output privateEndpointSubnetId string = vnet.properties.subnets[1].id
 output appGatewaySubnetId string = vnet.properties.subnets[2].id
+output azureFirewallSubnetId string = vnet.properties.subnets[3].id

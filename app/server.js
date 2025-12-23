@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Azure Container Apps Demo</title>
+      <title>Azure Container Apps Demo - V2</title>
       <style>
         * {
           margin: 0;
@@ -243,7 +243,7 @@ app.get('/', (req, res) => {
     <body>
       <div class="container">
         <div class="header">
-          <h1>🚀 Azure Container Apps</h1>
+          <h1>🚀 Azure Container Apps - Version 2.0</h1>
           <p style="color: #666; margin: 10px 0 20px 0; font-size: 1.2em;">Production-Ready Cloud Native Demo</p>
           <div class="status-badge">
             <div class="pulse-dot"></div>

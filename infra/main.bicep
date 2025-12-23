@@ -24,6 +24,33 @@ module spokeVnet 'vnet.bicep' = {
   }
 }
 
+// Deploy Azure Firewall Premium
+module firewall 'firewall.bicep' = {
+  name: 'firewall-deployment'
+  params: {
+    location: location
+    firewallName: 'afw-${environmentName}'
+    firewallSubnetId: spokeVnet.outputs.azureFirewallSubnetId
+    environmentName: environmentName
+  }
+}
+
+// Deploy Route Table (after firewall to get private IP)
+module routeTable 'route-table.bicep' = {
+  name: 'routetable-deployment'
+  params: {
+    location: location
+    routeTableName: 'rt-${environmentName}'
+    firewallPrivateIP: firewall.outputs.firewallPrivateIP
+    containerAppsSubnetId: spokeVnet.outputs.containerAppsSubnetId
+    appGatewaySubnetId: spokeVnet.outputs.appGatewaySubnetId
+  }
+  dependsOn: [
+    spokeVnet
+    firewall
+  ]
+}
+
 // Deploy Azure Container Registry
 module acr 'acr.bicep' = {
   name: 'acr-deployment'
@@ -46,7 +73,7 @@ module acrPrivateEndpoint 'acr-private-endpoint.bicep' = {
   }
 }
 
-// Deploy Container Apps Environment and App
+// Deploy Container Apps Environment and App (after route table)
 module containerApp 'container-app.bicep' = {
   name: 'containerapp-deployment'
   params: {
@@ -57,9 +84,12 @@ module containerApp 'container-app.bicep' = {
     acrName: acr.outputs.acrName
     acrLoginServer: acr.outputs.acrLoginServer
   }
+  dependsOn: [
+    routeTable
+  ]
 }
 
-// Deploy Application Gateway
+// Deploy Application Gateway (after route table)
 module appGateway 'appgateway.bicep' = {
   name: 'appgateway-deployment'
   params: {
@@ -68,6 +98,10 @@ module appGateway 'appgateway.bicep' = {
     appGatewaySubnetId: spokeVnet.outputs.appGatewaySubnetId
     backendFqdn: containerApp.outputs.containerAppFqdn
   }
+  dependsOn: [
+    routeTable
+    containerApp
+  ]
 }
 
 // Outputs
@@ -78,3 +112,5 @@ output spokeVnetName string = spokeVnet.outputs.vnetName
 output containerAppsEnvName string = containerApp.outputs.containerAppsEnvName
 output appGatewayPublicIp string = appGateway.outputs.appGatewayPublicIp
 output appGatewayFqdn string = appGateway.outputs.appGatewayFqdn
+output firewallPrivateIP string = firewall.outputs.firewallPrivateIP
+output firewallPublicIP string = firewall.outputs.firewallPublicIP
