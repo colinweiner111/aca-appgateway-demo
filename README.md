@@ -223,7 +223,165 @@ az group delete --name rg-aca-demo --yes --no-wait
 - No secrets or passwords in configuration
 - Azure RBAC for resource access
 
-## 🛠️ Deployment Scripts
+## � Outbound Traffic Requirements (Force Tunneling)
+
+When your organization force-tunnels all traffic to on-premises (0.0.0.0/0 → on-prem gateway), Azure Container Apps will fail because it can't reach required Azure services. This section covers what you need to allow and how.
+
+> **📖 Reference**: [Azure Container Apps Firewall Integration](https://learn.microsoft.com/en-us/azure/container-apps/use-azure-firewall)
+
+### Option 1: UDRs with Service Tags (No Azure Firewall)
+
+If you're NOT using Azure Firewall, create a route table with these service tag routes to bypass the force tunnel for Azure services:
+
+#### Required for All Scenarios
+
+| Name | Address Prefix | Next Hop Type | Purpose |
+|------|----------------|---------------|---------|
+| `mcr` | `MicrosoftContainerRegistry` | Internet | Microsoft Container Registry - system containers |
+| `mcr-frontdoor` | `AzureFrontDoor.FirstParty` | Internet | MCR dependency - required for image pulls |
+
+#### Required When Using ACR (Most Deployments)
+
+| Name | Address Prefix | Next Hop Type | Purpose |
+|------|----------------|---------------|---------|
+| `acr` | `AzureContainerRegistry` | Internet | Your Azure Container Registry |
+| `entra` | `AzureActiveDirectory` | Internet | Authentication for ACR and Managed Identity |
+
+#### Required When Using Key Vault References
+
+| Name | Address Prefix | Next Hop Type | Purpose |
+|------|----------------|---------------|---------|
+| `keyvault` | `AzureKeyVault` | Internet | Key Vault secret access |
+| `entra` | `AzureActiveDirectory` | Internet | Authentication (if not already added) |
+
+> **Regional Scoping**: Some service tags support regional variants (e.g., `AzureContainerRegistry.WestUS3`). Use regional tags when available to restrict access to only your region's IPs. `MicrosoftContainerRegistry`, `AzureFrontDoor.FirstParty`, and `AzureActiveDirectory` are global-only.
+
+### Option 2: Azure Firewall with Application Rules
+
+If routing 0.0.0.0/0 to Azure Firewall, configure these **application rules** (FQDN-based):
+
+#### Required for All Scenarios
+
+| FQDN | Description |
+|------|-------------|
+| `mcr.microsoft.com`, `*.data.mcr.microsoft.com` | Microsoft Container Registry |
+| `packages.aks.azure.com`, `acs-mirror.azureedge.net` | AKS/Kubernetes binaries |
+
+#### Required When Using ACR
+
+| FQDN | Description |
+|------|-------------|
+| `<your-acr>.azurecr.io` | Your Azure Container Registry |
+| `*.blob.core.windows.net` | ACR blob storage (image layers) |
+| `login.microsoft.com` | Authentication |
+
+#### Required When Using Managed Identity
+
+| FQDN | Description |
+|------|-------------|
+| `*.identity.azure.net` | Managed Identity endpoint |
+| `login.microsoftonline.com`, `*.login.microsoftonline.com`, `*.login.microsoft.com` | Entra ID authentication |
+
+#### Required When Using Key Vault
+
+| FQDN | Description |
+|------|-------------|
+| `<your-keyvault>.vault.azure.net` | Your Key Vault |
+| `login.microsoft.com` | Authentication |
+
+#### Optional: Docker Hub (If Using)
+
+| FQDN | Description |
+|------|-------------|
+| `hub.docker.com`, `registry-1.docker.io`, `production.cloudflare.docker.com` | Docker Hub Registry |
+
+### Option 2 Alternative: Azure Firewall with Network Rules
+
+Instead of application rules, you can use **network rules** with service tags:
+
+| Service Tag | Description |
+|-------------|-------------|
+| `MicrosoftContainerRegistry`, `AzureFrontDoor.FirstParty` | Required for all scenarios |
+| `AzureContainerRegistry`, `AzureActiveDirectory` | Required when using ACR |
+| `AzureKeyVault`, `AzureActiveDirectory` | Required when using Key Vault |
+| `AzureActiveDirectory` | Required when using Managed Identity |
+
+> **Note**: You only need application rules OR network rules, not both. Application rules give you FQDN-level control; network rules use service tags (IP ranges).
+
+### Use Private Endpoints Instead
+
+For any Azure service that supports Private Endpoints, **use them**. Traffic stays within your VNet—no UDRs or firewall rules needed.
+
+**Services that support Private Endpoints:**
+- **Azure Container Registry** - Container images (as shown in this demo)
+- **Azure Key Vault** - Secrets, certificates, and keys
+- **Azure Storage** - Blobs, queues, tables, files
+- **Azure Service Bus** - Messaging and queues
+- **Azure SQL Database** - Relational data
+- **Azure Cosmos DB** - NoSQL data
+- **Azure Event Hubs** - Event streaming
+- **Azure Redis Cache** - Caching layer
+
+### Example: Creating the Route Table (UDR Approach)
+
+```powershell
+# Create route table
+az network route-table create `
+  --resource-group rg-aca-demo `
+  --name rt-aca-force-tunnel `
+  --location westus3
+
+# Required: MCR
+az network route-table route create `
+  --resource-group rg-aca-demo `
+  --route-table-name rt-aca-force-tunnel `
+  --name mcr `
+  --address-prefix MicrosoftContainerRegistry `
+  --next-hop-type Internet
+
+# Required: MCR dependency
+az network route-table route create `
+  --resource-group rg-aca-demo `
+  --route-table-name rt-aca-force-tunnel `
+  --name mcr-frontdoor `
+  --address-prefix AzureFrontDoor.FirstParty `
+  --next-hop-type Internet
+
+# Required for ACR: Container Registry (use regional tag)
+az network route-table route create `
+  --resource-group rg-aca-demo `
+  --route-table-name rt-aca-force-tunnel `
+  --name acr `
+  --address-prefix AzureContainerRegistry.WestUS3 `
+  --next-hop-type Internet
+
+# Required for ACR/Managed Identity: Entra ID
+az network route-table route create `
+  --resource-group rg-aca-demo `
+  --route-table-name rt-aca-force-tunnel `
+  --name entra `
+  --address-prefix AzureActiveDirectory `
+  --next-hop-type Internet
+
+# Associate route table with Container Apps subnet
+az network vnet subnet update `
+  --resource-group rg-aca-demo `
+  --vnet-name vnet-containerapp-demo `
+  --name snet-container-apps `
+  --route-table rt-aca-force-tunnel
+```
+
+### Common Symptoms When Outbound Access Is Blocked
+
+| Symptom | Likely Cause |
+|---------|--------------|
+| `ImagePullBackOff` or image pull timeout | Can't reach `MicrosoftContainerRegistry` or `AzureFrontDoor.FirstParty` |
+| Can't pull from your ACR | Can't reach `AzureContainerRegistry` |
+| Managed Identity authentication fails | Can't reach `AzureActiveDirectory` |
+| Key Vault references fail | Can't reach `AzureKeyVault` |
+| Container App stuck in "Provisioning" | Multiple services blocked |
+
+## �🛠️ Deployment Scripts
 
 ### PowerShell
 
