@@ -231,20 +231,6 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 
 ---
 
-### Required Service Tags
-
-| Service Tag | When Required |
-|-------------|---------------|
-| `MicrosoftContainerRegistry` | Always |
-| `AzureFrontDoor.FirstParty` | Always (MCR dependency) |
-| `AzureContainerRegistry` | When using ACR |
-| `AzureActiveDirectory` | When using ACR, Managed Identity, or Key Vault |
-| `AzureKeyVault` | When using Key Vault references |
-
-> **Tip**: Use regional variants where available (e.g., `AzureContainerRegistry.WestUS3`). MCR, FrontDoor, and AAD are global-only.
-
----
-
 ### Option 1: Azure Firewall — Application Rules (FQDNs)
 
 | FQDN | When Required |
@@ -259,32 +245,31 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 
 ### Option 2: Azure Firewall — Network Rules (Service Tags)
 
-Create network rules using the service tags from the table above. This is simpler than FQDNs but less granular.
+| Service Tag | When Required |
+|-------------|---------------|
+| `MicrosoftContainerRegistry` | Always |
+| `AzureFrontDoor.FirstParty` | Always (MCR dependency) |
+| `AzureContainerRegistry` | When using ACR |
+| `AzureActiveDirectory` | When using ACR, Managed Identity, or Key Vault |
+| `AzureKeyVault` | When using Key Vault references |
+
+> **Tip**: Use regional variants where available (e.g., `AzureContainerRegistry.WestUS3`). MCR, FrontDoor, and AAD are global-only.
 
 ---
 
 ### Option 3: UDRs with Service Tags (No Azure Firewall)
 
-If you're not using Azure Firewall, create a route table to bypass the force tunnel for required services:
+Create a route table with these service tags to bypass the force tunnel:
 
-```powershell
-# Create route table
-az network route-table create -g rg-aca-demo -n rt-aca-force-tunnel -l westus3
+| Service Tag | When Required |
+|-------------|---------------|
+| `MicrosoftContainerRegistry` | Always |
+| `AzureFrontDoor.FirstParty` | Always (MCR dependency) |
+| `AzureContainerRegistry` | When using ACR |
+| `AzureActiveDirectory` | When using ACR, Managed Identity, or Key Vault |
+| `AzureKeyVault` | When using Key Vault references |
 
-# Add routes for required service tags
-az network route-table route create -g rg-aca-demo --route-table-name rt-aca-force-tunnel `
-  -n mcr --address-prefix MicrosoftContainerRegistry --next-hop-type Internet
-az network route-table route create -g rg-aca-demo --route-table-name rt-aca-force-tunnel `
-  -n mcr-fd --address-prefix AzureFrontDoor.FirstParty --next-hop-type Internet
-az network route-table route create -g rg-aca-demo --route-table-name rt-aca-force-tunnel `
-  -n acr --address-prefix AzureContainerRegistry.WestUS3 --next-hop-type Internet
-az network route-table route create -g rg-aca-demo --route-table-name rt-aca-force-tunnel `
-  -n entra --address-prefix AzureActiveDirectory --next-hop-type Internet
-
-# Associate with Container Apps subnet
-az network vnet subnet update -g rg-aca-demo --vnet-name vnet-containerapp-demo `
-  -n snet-container-apps --route-table rt-aca-force-tunnel
-```
+> **Tip**: Use regional variants where available (e.g., `AzureContainerRegistry.WestUS3`). MCR, FrontDoor, and AAD are global-only.
 
 ---
 
