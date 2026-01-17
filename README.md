@@ -245,7 +245,9 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 
 ---
 
-### FQDNs for Azure Firewall Application Rules
+### Azure Firewall Rules
+
+**Option A: Application Rules (FQDN-based)**
 
 | FQDN | When Required |
 |------|---------------|
@@ -255,7 +257,9 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 | `*.identity.azure.net`, `login.microsoftonline.com` | When using Managed Identity |
 | `<your-keyvault>.vault.azure.net` | When using Key Vault |
 
-> **Note**: Use EITHER service tags (network rules) OR FQDNs (application rules), not both.
+**Option B: Network Rules (Service Tags)** — Use the same service tags from the table above.
+
+> **Note**: Use EITHER application rules OR network rules, not both. Application rules give FQDN-level control; network rules use IP ranges.
 
 ---
 
