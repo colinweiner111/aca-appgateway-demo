@@ -231,7 +231,7 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 
 ---
 
-### Service Tags to Allow
+### Required Service Tags
 
 | Service Tag | When Required |
 |-------------|---------------|
@@ -245,9 +245,7 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 
 ---
 
-### Azure Firewall Rules
-
-**Option A: Application Rules (FQDN-based)**
+### Option 1: Azure Firewall — Application Rules (FQDNs)
 
 | FQDN | When Required |
 |------|---------------|
@@ -257,21 +255,17 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 | `*.identity.azure.net`, `login.microsoftonline.com` | When using Managed Identity |
 | `<your-keyvault>.vault.azure.net` | When using Key Vault |
 
-**Option B: Network Rules (Service Tags)** — Use the same service tags from the table above.
+---
 
-> **Note**: Use EITHER application rules OR network rules, not both. Application rules give FQDN-level control; network rules use IP ranges.
+### Option 2: Azure Firewall — Network Rules (Service Tags)
+
+Create network rules using the service tags from the table above. This is simpler than FQDNs but less granular.
 
 ---
 
-### Prefer Private Endpoints
+### Option 3: UDRs with Service Tags (No Azure Firewall)
 
-Private endpoints keep traffic in your VNet—no firewall rules needed:
-
-**ACR** · **Key Vault** · **Storage** · **Service Bus** · **SQL** · **Cosmos DB** · **Event Hubs** · **Redis**
-
----
-
-### Quick Setup: Route Table
+If you're not using Azure Firewall, create a route table to bypass the force tunnel for required services:
 
 ```powershell
 # Create route table
@@ -291,6 +285,14 @@ az network route-table route create -g rg-aca-demo --route-table-name rt-aca-for
 az network vnet subnet update -g rg-aca-demo --vnet-name vnet-containerapp-demo `
   -n snet-container-apps --route-table rt-aca-force-tunnel
 ```
+
+---
+
+### Prefer Private Endpoints
+
+Private endpoints keep traffic in your VNet—no firewall rules needed:
+
+**ACR** · **Key Vault** · **Storage** · **Service Bus** · **SQL** · **Cosmos DB** · **Event Hubs** · **Redis**
 
 ---
 
