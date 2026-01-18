@@ -155,6 +155,24 @@ resource applicationRuleCollectionGroup 'Microsoft.Network/firewallPolicies/rule
           }
           {
             ruleType: 'ApplicationRule'
+            name: 'AllowAKSBinaries'
+            description: 'Allow AKS/Kubernetes binaries required by ACA'
+            protocols: [
+              {
+                protocolType: 'Https'
+                port: 443
+              }
+            ]
+            sourceAddresses: [
+              '10.0.0.0/16'
+            ]
+            targetFqdns: [
+              'packages.aks.azure.com'
+              'acs-mirror.azureedge.net'
+            ]
+          }
+          {
+            ruleType: 'ApplicationRule'
             name: 'AllowDockerHub'
             description: 'Allow Docker Hub for base images'
             protocols: [
@@ -188,12 +206,13 @@ resource applicationRuleCollectionGroup 'Microsoft.Network/firewallPolicies/rule
             targetFqdns: [
               '*.azurecr.io'
               '*.blob.core.windows.net'
+              'login.microsoft.com'
             ]
           }
           {
             ruleType: 'ApplicationRule'
-            name: 'AllowAzureManagement'
-            description: 'Allow Azure management endpoints'
+            name: 'AllowManagedIdentity'
+            description: 'Allow Managed Identity authentication'
             protocols: [
               {
                 protocolType: 'Https'
@@ -204,8 +223,10 @@ resource applicationRuleCollectionGroup 'Microsoft.Network/firewallPolicies/rule
               '10.0.0.0/16'
             ]
             targetFqdns: [
-              'management.azure.com'
+              '*.identity.azure.net'
               'login.microsoftonline.com'
+              '*.login.microsoftonline.com'
+              '*.login.microsoft.com'
             ]
           }
         ]

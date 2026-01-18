@@ -225,7 +225,7 @@ az group delete --name rg-aca-demo --yes --no-wait
 
 ## 🔀 Outbound Traffic Requirements (Force Tunneling)
 
-When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure Container Apps fails because it can't reach required Azure services.
+If force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure Container Apps fails because it can't reach required Azure services.
 
 > **📖 Reference**: [Azure Container Apps Firewall Integration](https://learn.microsoft.com/en-us/azure/container-apps/use-azure-firewall)
 
@@ -238,8 +238,8 @@ When force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure C
 | `mcr.microsoft.com`, `*.data.mcr.microsoft.com` | Always |
 | `packages.aks.azure.com`, `acs-mirror.azureedge.net` | Always |
 | `<your-acr>.azurecr.io`, `*.blob.core.windows.net`, `login.microsoft.com` | When using ACR |
-| `*.identity.azure.net`, `login.microsoftonline.com` | When using Managed Identity |
-| `<your-keyvault>.vault.azure.net` | When using Key Vault |
+| `*.identity.azure.net`, `login.microsoftonline.com`, `*.login.microsoftonline.com`, `*.login.microsoft.com` | When using Managed Identity |
+| `<your-keyvault>.vault.azure.net`, `login.microsoft.com` | When using Key Vault |
 
 ---
 
