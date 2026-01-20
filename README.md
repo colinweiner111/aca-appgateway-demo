@@ -1,4 +1,4 @@
-# Azure Container Appswith Application Gateway
+# Azure Container Apps with Application Gateway
 
 A demonstration of Azure Container Apps with Application Gateway WAF, private ACR, and VNET integration.
 
