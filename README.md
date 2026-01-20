@@ -1,4 +1,4 @@
-# Azure Container Apps Demo with Application Gateway
+# Azure Container Appswith Application Gateway
 
 A demonstration of Azure Container Apps with Application Gateway WAF, private ACR, and VNET integration.
 
@@ -223,9 +223,9 @@ az group delete --name rg-aca-demo --yes --no-wait
 - No secrets or passwords in configuration
 - Azure RBAC for resource access
 
-## 🔀 Outbound Traffic Requirements (Force Tunneling)
+## 🔀 Platform Egress Requirements
 
-If force-tunneling all traffic to on-premises (0.0.0.0/0 → on-prem), Azure Container Apps fails because it can't reach required Azure services.
+Platform egress requirements apply regardless of routing topology (Azure Firewall, NVA, on-premises inspection, or vWAN). These are platform dependencies, not optional networking paths.
 
 > **📖 Reference**: [Azure Container Apps Firewall Integration](https://learn.microsoft.com/en-us/azure/container-apps/use-azure-firewall)
 
